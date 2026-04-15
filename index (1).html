@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>magnec — Find the perfect site for your business</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --cream:#F4EFE6;
+    --cream-2:#EDE7DA;
+    --ink:#0A1628;
+    --ink-2:#1A2940;
+    --slate:#5A6A7E;
+    --slate-2:#8A95A6;
+    --teal:#00B3A6;
+    --teal-bright:#00E5D4;
+    --line:#D8D0BF;
+    --amber:#E89B3C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--cream);color:var(--ink);font-family:'Archivo',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:'tnum'}
+  .display{font-family:'Archivo',sans-serif;font-stretch:125%;letter-spacing:-0.04em}
+
+  /* paper texture */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(10,22,40,.025) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(10,22,40,.02) 0%, transparent 50%);
+    mix-blend-mode:multiply;
+  }
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:24px 36px}
+  .logo{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:800;font-size:22px;letter-spacing:-.04em;line-height:1}
+  .logo .dot{color:var(--teal)}
+  .topbar-meta{display:flex;align-items:center;gap:24px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--slate)}
+  .topbar-meta .live{display:flex;align-items:center;gap:8px}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:blink 1.8s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ---------- LAYOUT ---------- */
+  .stage{position:relative;min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;padding:0 36px}
+
+  /* skyline */
+  .skyline-wrap{position:absolute;left:0;right:0;bottom:0;height:58vh;z-index:2;pointer-events:none;overflow:hidden}
+  .skyline-wrap svg{width:100%;height:100%;display:block}
+
+  /* hero copy */
+  .hero{position:relative;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:1280px;width:100%;margin:0 auto;padding:120px 0 0;flex:1}
+
+  .eyebrow{display:flex;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);margin-bottom:36px}
+  .eyebrow .bar{width:32px;height:1px;background:var(--ink);opacity:.4}
+
+  .quote{font-family:'Archivo',sans-serif;font-weight:300;font-size:clamp(28px,4.2vw,52px);line-height:1.15;letter-spacing:-.025em;color:var(--ink);max-width:920px;margin-bottom:48px;font-style:italic}
+  .quote em{font-style:normal;color:var(--teal);font-weight:400}
+  .quote::before{content:'"';display:inline-block;font-family:'Archivo',sans-serif;font-weight:600;color:var(--teal);margin-right:.05em;font-style:normal}
+  .quote::after{content:'"';font-family:'Archivo',sans-serif;font-weight:600;color:var(--teal);font-style:normal}
+
+  h1.headline{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:700;font-size:clamp(40px,7vw,88px);line-height:.95;letter-spacing:-.045em;color:var(--ink);max-width:1100px;margin-bottom:48px}
+  h1.headline .accent{color:var(--teal);position:relative;display:inline-block}
+  h1.headline .accent::after{content:'';position:absolute;left:0;right:0;bottom:.06em;height:.08em;background:var(--teal);opacity:.25}
+
+  .ctas{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .btn{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;padding:18px 28px;cursor:pointer;display:inline-flex;align-items:center;gap:14px;transition:all .25s cubic-bezier(.2,.8,.2,1);border:none;text-decoration:none}
+  .btn.primary{background:var(--ink);color:var(--cream);position:relative;overflow:hidden}
+  .btn.primary:hover{background:var(--teal);color:var(--ink);transform:translateY(-2px);box-shadow:0 14px 40px -10px rgba(0,179,166,.5)}
+  .btn.primary .arrow{transition:transform .25s}
+  .btn.primary:hover .arrow{transform:translateX(4px)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink);}
+  .btn.ghost:hover{background:var(--ink);color:var(--cream)}
+
+  /* footer strip */
+  .stripe{position:relative;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:28px 0;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--slate);border-top:1px solid var(--line)}
+  .stripe .left{display:flex;gap:32px}
+  .stripe .left span strong{color:var(--ink);font-weight:500}
+  .stripe .scroll-hint{display:flex;align-items:center;gap:10px}
+  .scroll-hint .arrow-down{width:14px;height:14px;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);transform:rotate(45deg);animation:nudge 1.8s ease-in-out infinite}
+  @keyframes nudge{0%,100%{transform:rotate(45deg) translate(0,0);opacity:.4}50%{transform:rotate(45deg) translate(2px,2px);opacity:1}}
+
+  /* ---------- HOW IT WORKS OVERLAY ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(10,22,40,.5);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .35s}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .overlay-panel{background:var(--cream);max-width:720px;width:calc(100% - 48px);padding:48px;position:relative;transform:translateY(20px);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  .overlay.open .overlay-panel{transform:none}
+  .overlay-close{position:absolute;top:20px;right:20px;width:36px;height:36px;background:transparent;border:1px solid var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink);transition:all .2s}
+  .overlay-close:hover{background:var(--ink);color:var(--cream)}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:36px}
+  .step{padding:24px 0;border-top:1px solid var(--ink)}
+  .step .num{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--teal);letter-spacing:.18em;margin-bottom:12px}
+  .step h3{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:600;font-size:18px;letter-spacing:-.02em;margin-bottom:8px}
+  .step p{font-size:13px;line-height:1.55;color:var(--slate)}
+
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  @keyframes pulse-dot{0%{transform:scale(.6);opacity:0}50%{opacity:.6}100%{transform:scale(2);opacity:0}}
+
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .rise{animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+  .d1{animation-delay:.1s}.d2{animation-delay:.25s}.d3{animation-delay:.4s}.d4{animation-delay:.55s}.d5{animation-delay:.7s}
+
+  @media (max-width:760px){
+    .stage{padding:0 20px}
+    .topbar{padding:18px 20px}
+    .topbar-meta{display:none}
+    .skyline-wrap{height:42vh}
+    .steps{grid-template-columns:1fr}
+    .overlay-panel{padding:32px 24px}
+    .stripe{flex-direction:column;gap:14px;align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="logo rise d1">magnec<span class="dot">.</span></div>
+  <div class="topbar-meta rise d1">
+    <span class="live"><span class="live-dot"></span><span style="color:var(--teal)">FYMA LIVE</span></span>
+    <span>BRISTOL · TEMPLE QUARTER</span>
+    <span>v0.4 PROTOTYPE</span>
+  </div>
+</header>
+
+<div class="stage">
+  <div></div>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="eyebrow rise d2">
+      <span class="bar"></span>
+      <span>An urban activation platform for Bristol</span>
+    </div>
+
+    <p class="quote rise d3">
+      Every empty shopfront is a missed conversation between a city and its people.
+    </p>
+
+    <h1 class="headline rise d4">
+      Find the perfect site<br/>for your <span class="accent">business</span> today.
+    </h1>
+
+    <div class="ctas rise d5">
+      <a href="app.html" class="btn primary">
+        <span>Enter Platform</span>
+        <span class="arrow">→</span>
+      </a>
+      <button class="btn ghost" id="open-how">How it works</button>
+    </div>
+  </section>
+
+  <!-- ANIMATED SKYLINE -->
+  <div class="skyline-wrap" aria-hidden="true">
+    <svg viewBox="0 0 2400 600" preserveAspectRatio="xMidYEnd slice">
+      <defs>
+        <!-- distant haze gradient -->
+        <linearGradient id="hazeGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#F4EFE6" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#F4EFE6" stop-opacity=".55"/>
+        </linearGradient>
+        <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#0A1628" stop-opacity=".15"/>
+          <stop offset="100%" stop-color="#0A1628" stop-opacity=".35"/>
+        </linearGradient>
+        <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#E89B3C" stop-opacity=".5"/>
+          <stop offset="60%" stop-color="#E89B3C" stop-opacity=".15"/>
+          <stop offset="100%" stop-color="#E89B3C" stop-opacity="0"/>
+        </radialGradient>
+
+        <!-- one repeating skyline tile, ~1200 wide.
+             we draw it twice end-to-end and animate translateX -50% to loop. -->
+        <symbol id="skyTile" viewBox="0 0 1200 600" width="1200" height="600">
+          <!-- distant city band (very pale) -->
+          <g fill="#0A1628" opacity=".15">
+            <rect x="0" y="380" width="1200" height="60"/>
+            <rect x="40" y="350" width="22" height="30"/>
+            <rect x="78" y="340" width="14" height="40"/>
+            <rect x="110" y="358" width="30" height="22"/>
+            <rect x="160" y="335" width="16" height="45"/>
+            <rect x="190" y="345" width="40" height="35"/>
+            <rect x="250" y="320" width="18" height="60"/>
+            <rect x="280" y="350" width="26" height="30"/>
+            <rect x="320" y="340" width="32" height="40"/>
+            <rect x="370" y="328" width="20" height="52"/>
+            <rect x="402" y="345" width="30" height="35"/>
+            <rect x="450" y="330" width="44" height="50"/>
+            <rect x="510" y="345" width="22" height="35"/>
+            <rect x="544" y="338" width="36" height="42"/>
+            <rect x="592" y="350" width="28" height="30"/>
+            <rect x="630" y="328" width="20" height="52"/>
+            <rect x="660" y="345" width="40" height="35"/>
+            <rect x="712" y="335" width="16" height="45"/>
+            <rect x="740" y="350" width="32" height="30"/>
+            <rect x="785" y="320" width="22" height="60"/>
+            <rect x="820" y="345" width="38" height="35"/>
+            <rect x="870" y="330" width="20" height="50"/>
+            <rect x="900" y="345" width="42" height="35"/>
+            <rect x="955" y="338" width="18" height="42"/>
+            <rect x="985" y="350" width="34" height="30"/>
+            <rect x="1030" y="332" width="22" height="48"/>
+            <rect x="1064" y="345" width="40" height="35"/>
+            <rect x="1118" y="338" width="20" height="42"/>
+            <rect x="1148" y="350" width="36" height="30"/>
+          </g>
+
+          <!-- mid skyline (medium tone) -->
+          <g fill="#0A1628" opacity=".42">
+            <!-- base band -->
+            <rect x="0" y="450" width="1200" height="80"/>
+
+            <!-- left cluster: warehouse / office -->
+            <rect x="20" y="420" width="60" height="30"/>
+            <polygon points="20,420 50,400 80,420"/>
+            <rect x="95" y="395" width="48" height="55"/>
+            <g><rect x="100" y="410" width="6" height="6" fill="#F4EFE6" opacity=".5"/><rect x="115" y="410" width="6" height="6" fill="#F4EFE6" opacity=".5"/><rect x="130" y="410" width="6" height="6" fill="#F4EFE6" opacity=".5"/><rect x="100" y="425" width="6" height="6" fill="#F4EFE6" opacity=".5"/><rect x="115" y="425" width="6" height="6" fill="#F4EFE6" opacity=".5"/><rect x="130" y="425" width="6" height="6" fill="#F4EFE6" opacity=".5"/></g>
+
+            <!-- Cabot Tower silhouette -->
+            <rect x="180" y="320" width="22" height="130"/>
+            <rect x="176" y="312" width="30" height="10"/>
+            <polygon points="176,312 191,290 206,312"/>
+            <rect x="188" y="280" width="6" height="14"/>
+
+            <!-- Wills Memorial-esque -->
+            <rect x="240" y="350" width="60" height="100"/>
+            <rect x="252" y="320" width="36" height="30"/>
+            <polygon points="252,320 270,290 288,320"/>
+            <g fill="#F4EFE6" opacity=".4">
+              <rect x="248" y="370" width="4" height="10"/><rect x="258" y="370" width="4" height="10"/><rect x="268" y="370" width="4" height="10"/><rect x="278" y="370" width="4" height="10"/><rect x="288" y="370" width="4" height="10"/>
+              <rect x="248" y="395" width="4" height="10"/><rect x="258" y="395" width="4" height="10"/><rect x="268" y="395" width="4" height="10"/><rect x="278" y="395" width="4" height="10"/><rect x="288" y="395" width="4" height="10"/>
+            </g>
+
+            <!-- mid offices -->
+            <rect x="320" y="380" width="50" height="70"/>
+            <rect x="378" y="360" width="40" height="90"/>
+            <rect x="424" y="395" width="56" height="55"/>
+            <rect x="488" y="370" width="34" height="80"/>
+
+            <!-- crane -->
+            <g stroke="#0A1628" stroke-width="1.5" fill="none">
+              <line x1="535" y1="450" x2="535" y2="280"/>
+              <line x1="490" y1="290" x2="600" y2="290"/>
+              <line x1="535" y1="280" x2="490" y2="290"/>
+              <line x1="535" y1="280" x2="600" y2="290"/>
+              <line x1="580" y1="290" x2="580" y2="320"/>
+              <rect x="572" y="320" width="16" height="10" fill="#0A1628"/>
+            </g>
+
+            <!-- Wills Building (tobacco, big chimneys) -->
+            <rect x="620" y="380" width="120" height="70"/>
+            <rect x="635" y="350" width="20" height="30"/>
+            <rect x="700" y="350" width="20" height="30"/>
+            <g fill="#F4EFE6" opacity=".35">
+              <rect x="630" y="395" width="6" height="8"/><rect x="645" y="395" width="6" height="8"/><rect x="660" y="395" width="6" height="8"/><rect x="675" y="395" width="6" height="8"/><rect x="690" y="395" width="6" height="8"/><rect x="705" y="395" width="6" height="8"/><rect x="720" y="395" width="6" height="8"/>
+              <rect x="630" y="420" width="6" height="8"/><rect x="645" y="420" width="6" height="8"/><rect x="660" y="420" width="6" height="8"/><rect x="675" y="420" width="6" height="8"/><rect x="690" y="420" width="6" height="8"/><rect x="705" y="420" width="6" height="8"/><rect x="720" y="420" width="6" height="8"/>
+            </g>
+
+            <!-- modern glass tower -->
+            <rect x="760" y="300" width="46" height="150"/>
+            <g fill="#F4EFE6" opacity=".35">
+              <rect x="765" y="315" width="36" height="2"/>
+              <rect x="765" y="335" width="36" height="2"/>
+              <rect x="765" y="355" width="36" height="2"/>
+              <rect x="765" y="375" width="36" height="2"/>
+              <rect x="765" y="395" width="36" height="2"/>
+              <rect x="765" y="415" width="36" height="2"/>
+            </g>
+
+            <!-- St Mary Redcliffe spire -->
+            <rect x="830" y="370" width="40" height="80"/>
+            <rect x="838" y="340" width="24" height="30"/>
+            <polygon points="838,340 850,260 862,340"/>
+            <rect x="847" y="250" width="6" height="14"/>
+
+            <!-- right cluster offices -->
+            <rect x="900" y="395" width="50" height="55"/>
+            <rect x="958" y="370" width="36" height="80"/>
+            <rect x="1002" y="385" width="60" height="65"/>
+            <rect x="1070" y="360" width="28" height="90"/>
+            <rect x="1106" y="395" width="50" height="55"/>
+            <rect x="1162" y="380" width="34" height="70"/>
+          </g>
+
+          <!-- foreground (sharper, darker) -->
+          <g fill="#0A1628" opacity=".82">
+            <rect x="0" y="500" width="1200" height="100"/>
+
+            <!-- terraced bristol houses -->
+            <g>
+              <rect x="40" y="470" width="40" height="30"/>
+              <polygon points="40,470 60,455 80,470"/>
+              <rect x="56" y="478" width="8" height="14" fill="#F4EFE6" opacity=".5"/>
+            </g>
+            <g>
+              <rect x="90" y="465" width="40" height="35"/>
+              <polygon points="90,465 110,448 130,465"/>
+              <rect x="106" y="475" width="8" height="14" fill="#F4EFE6" opacity=".5"/>
+            </g>
+            <g>
+              <rect x="140" y="468" width="40" height="32"/>
+              <polygon points="140,468 160,452 180,468"/>
+              <rect x="156" y="478" width="8" height="14" fill="#F4EFE6" opacity=".5"/>
+            </g>
+
+            <!-- Suspension Bridge tower (just a hint) -->
+            <g>
+              <rect x="220" y="430" width="14" height="70"/>
+              <rect x="217" y="420" width="20" height="10"/>
+              <rect x="222" y="408" width="10" height="14"/>
+              <rect x="220" y="395" width="14" height="10"/>
+              <!-- cables -->
+              <path d="M227 408 Q300 470 380 500" stroke="#0A1628" stroke-width="1" fill="none" opacity=".7"/>
+              <path d="M227 408 Q150 470 70 500" stroke="#0A1628" stroke-width="1" fill="none" opacity=".7"/>
+            </g>
+
+            <!-- Temple Meads-ish station roof -->
+            <g transform="translate(380,440)">
+              <rect x="0" y="40" width="160" height="60"/>
+              <path d="M0 40 Q80 0 160 40 Z"/>
+              <rect x="20" y="60" width="6" height="20" fill="#F4EFE6" opacity=".5"/>
+              <rect x="38" y="60" width="6" height="20" fill="#F4EFE6" opacity=".5"/>
+              <rect x="56" y="60" width="6" height="20" fill="#F4EFE6" opacity=".5"/>
+              <rect x="74" y="60" width="6" height="20" fill="#F4EFE6" opacity=".5"/>
+              <rect x="92" y="60" width="6" height="20" fill="#F4EFE6" opacity=".5"/>
+              <rect x="110" y="60" width="6" height="20" fill="#F4EFE6" opacity=".5"/>
+              <rect x="128" y="60" width="6" height="20" fill="#F4EFE6" opacity=".5"/>
+              <!-- clock tower -->
+              <rect x="74" y="-10" width="20" height="50"/>
+              <polygon points="74,-10 84,-30 94,-10"/>
+              <circle cx="84" cy="10" r="4" fill="#F4EFE6" opacity=".7"/>
+            </g>
+
+            <!-- low warehouses -->
+            <rect x="560" y="468" width="80" height="32"/>
+            <rect x="650" y="475" width="100" height="25"/>
+            <rect x="760" y="465" width="70" height="35"/>
+
+            <!-- new TQ1 campus tower (modern, sharp) -->
+            <g>
+              <rect x="850" y="380" width="60" height="120"/>
+              <g fill="#F4EFE6" opacity=".4">
+                <rect x="858" y="395" width="44" height="2"/>
+                <rect x="858" y="415" width="44" height="2"/>
+                <rect x="858" y="435" width="44" height="2"/>
+                <rect x="858" y="455" width="44" height="2"/>
+                <rect x="858" y="475" width="44" height="2"/>
+              </g>
+              <!-- highlighted teal window -->
+              <rect x="868" y="415" width="14" height="14" fill="#00B3A6" opacity=".9"/>
+            </g>
+
+            <!-- terraced houses right -->
+            <g>
+              <rect x="940" y="468" width="40" height="32"/>
+              <polygon points="940,468 960,452 980,468"/>
+              <rect x="956" y="478" width="8" height="14" fill="#F4EFE6" opacity=".5"/>
+            </g>
+            <g>
+              <rect x="990" y="470" width="40" height="30"/>
+              <polygon points="990,470 1010,455 1030,470"/>
+              <rect x="1006" y="480" width="8" height="14" fill="#F4EFE6" opacity=".5"/>
+            </g>
+
+            <!-- pop-up market roofs (relevant to magnec) -->
+            <g>
+              <polygon points="1050,490 1070,470 1090,490 1110,470 1130,490 1150,470 1170,490" fill="none" stroke="#0A1628" stroke-width="1.5"/>
+              <rect x="1050" y="490" width="120" height="10"/>
+            </g>
+          </g>
+        </symbol>
+      </defs>
+
+      <!-- sun glow -->
+      <circle cx="1900" cy="200" r="220" fill="url(#sun)"/>
+
+      <!-- river/water hint -->
+      <rect x="0" y="540" width="2400" height="60" fill="url(#waterGrad)"/>
+
+      <!-- looped skyline (two tiles) -->
+      <g class="loop">
+        <use href="#skyTile" x="0" y="0"/>
+        <use href="#skyTile" x="1200" y="0"/>
+      </g>
+
+      <!-- haze fade at top of skyline -->
+      <rect x="0" y="240" width="2400" height="240" fill="url(#hazeGrad)"/>
+
+      <!-- floating Magnec site dots -->
+      <g class="dots">
+        <g transform="translate(180,470)">
+          <circle r="14" fill="#00B3A6" opacity=".18" class="ping"/>
+          <circle r="4" fill="#00B3A6"/>
+        </g>
+        <g transform="translate(560,460)">
+          <circle r="14" fill="#E89B3C" opacity=".25" class="ping" style="animation-delay:.6s"/>
+          <circle r="4" fill="#E89B3C"/>
+        </g>
+        <g transform="translate(880,440)">
+          <circle r="14" fill="#00B3A6" opacity=".18" class="ping" style="animation-delay:1.1s"/>
+          <circle r="4" fill="#00B3A6"/>
+        </g>
+        <g transform="translate(1280,470)">
+          <circle r="14" fill="#E89B3C" opacity=".25" class="ping" style="animation-delay:.3s"/>
+          <circle r="4" fill="#E89B3C"/>
+        </g>
+        <g transform="translate(1700,455)">
+          <circle r="14" fill="#00B3A6" opacity=".18" class="ping" style="animation-delay:1.6s"/>
+          <circle r="4" fill="#00B3A6"/>
+        </g>
+        <g transform="translate(2080,470)">
+          <circle r="14" fill="#E89B3C" opacity=".25" class="ping" style="animation-delay:.9s"/>
+          <circle r="4" fill="#E89B3C"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <!-- FOOTER STRIPE -->
+  <footer class="stripe">
+    <div class="left">
+      <span><strong>15+</strong> &nbsp;sites</span>
+      <span><strong>BS1</strong> &nbsp;Temple Quarter</span>
+      <span><strong>1–12</strong> &nbsp;month leases</span>
+    </div>
+    <div class="scroll-hint">
+      <span>Tap to explore</span>
+      <span class="arrow-down"></span>
+    </div>
+  </footer>
+</div>
+
+<!-- HOW IT WORKS OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="overlay-panel">
+    <button class="overlay-close" id="close-how" aria-label="Close">
+      <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
+    <div class="eyebrow" style="margin-bottom:18px"><span class="bar"></span><span>How it works</span></div>
+    <h2 class="display" style="font-size:36px;font-weight:700;line-height:1;letter-spacing:-.04em">Three steps from idea to open shop.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="num">01 / BROWSE</div>
+        <h3>Explore the map</h3>
+        <p>See live foot traffic, activity levels, and available sites across Bristol's Temple Quarter.</p>
+      </div>
+      <div class="step">
+        <div class="num">02 / CHOOSE</div>
+        <h3>Pick a location</h3>
+        <p>Compare sites, set your lease length from 1 to 12 months, and see the total monthly cost instantly.</p>
+      </div>
+      <div class="step">
+        <div class="num">03 / ACTIVATE</div>
+        <h3>Launch your pop-up</h3>
+        <p>Submit a "find out more" request and our team handles the rest — keys, permits, signage.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .loop{animation:drift 60s linear infinite}
+  .ping{animation:pulse-dot 3s ease-out infinite;transform-origin:center;transform-box:fill-box}
+  .dots > g{animation:float 4s ease-in-out infinite}
+  .dots > g:nth-child(2){animation-delay:.5s}
+  .dots > g:nth-child(3){animation-delay:1s}
+  .dots > g:nth-child(4){animation-delay:1.5s}
+  .dots > g:nth-child(5){animation-delay:2s}
+  .dots > g:nth-child(6){animation-delay:2.5s}
+</style>
+
+<script>
+  const ov = document.getElementById('overlay');
+  document.getElementById('open-how').onclick = ()=>ov.classList.add('open');
+  document.getElementById('close-how').onclick= ()=>ov.classList.remove('open');
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open')});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')ov.classList.remove('open')});
+</script>
+
+</body>
+</html>

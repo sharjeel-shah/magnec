@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>magnec — platform</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  if(typeof L==='undefined'){
+    document.write('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />');
+    document.write('<scr'+'ipt src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></scr'+'ipt>');
+  }
+</script>
+
+<style>
+  :root{
+    --bg-0:#050B18;
+    --bg-1:#0A1628;
+    --bg-2:#0F1D33;
+    --line:#16263F;
+    --line-2:#1F3252;
+    --slate-1:#4A5A73;
+    --slate-2:#7A8BA4;
+    --white:#F1F5FB;
+    --teal:#00E5D4;
+    --teal-dim:#00B3A6;
+    --blue:#4A9EFF;
+    --amber:#FFB547;
+    --amber-bright:#FFC85C;
+    --danger:#FF5C8A;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg-0);color:var(--white);font-family:'Archivo',sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:'tnum','zero'}
+  .display{font-family:'Archivo',sans-serif;font-stretch:125%;letter-spacing:-0.02em}
+
+  /* ---------- map ---------- */
+  #map{position:fixed;inset:0;background:var(--bg-0);z-index:0}
+  .leaflet-container{background:#05070D!important;outline:none}
+  .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) brightness(.92) contrast(1.05) saturate(.55)}
+  .leaflet-control-attribution{background:rgba(5,11,24,.7)!important;color:#4A5A73!important;font-family:'IBM Plex Mono',monospace;font-size:9px!important;border:1px solid var(--line)}
+  .leaflet-control-attribution a{color:#7A8BA4!important}
+  .leaflet-control-zoom{border:none!important;margin:16px!important}
+  .leaflet-control-zoom a{background:rgba(10,22,40,.85)!important;color:var(--white)!important;border:1px solid var(--line)!important;backdrop-filter:blur(12px);font-family:'IBM Plex Mono',monospace}
+  .leaflet-control-zoom a:hover{background:var(--bg-2)!important;color:var(--teal)!important;border-color:var(--teal)!important}
+
+  /* ---------- markers — higher contrast on hot ---------- */
+  .node{width:36px;height:36px;position:relative;cursor:pointer}
+  .node .pulse{position:absolute;inset:0;border-radius:50%;border:1px solid var(--teal-dim);animation:pulse 2.6s ease-out infinite;opacity:0}
+  .node .pulse.p2{animation-delay:1.3s}
+  .node .dot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(0,229,212,.18),0 0 16px rgba(0,229,212,.5)}
+  .node .ring{position:absolute;inset:6px;border:1px dashed rgba(0,229,212,.35);border-radius:50%;transition:all .3s}
+  .node:hover .ring{inset:2px;border-color:var(--teal)}
+  /* HOT: much brighter */
+  .node.hot .dot{background:var(--amber-bright);width:14px;height:14px;box-shadow:0 0 0 4px rgba(255,200,92,.3),0 0 28px rgba(255,200,92,.95),0 0 60px rgba(255,181,71,.4)}
+  .node.hot .pulse{border-color:var(--amber-bright);border-width:1.5px}
+  .node.hot .ring{border-color:rgba(255,200,92,.7)}
+  @keyframes pulse{0%{transform:scale(.4);opacity:.95}100%{transform:scale(1.7);opacity:0}}
+
+  .click-marker{width:22px;height:22px;position:relative}
+  .click-marker::before,.click-marker::after{content:'';position:absolute;background:var(--blue)}
+  .click-marker::before{top:50%;left:0;right:0;height:1px;transform:translateY(-50%)}
+  .click-marker::after{left:50%;top:0;bottom:0;width:1px;transform:translateX(-50%)}
+  .click-marker .core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border:1px solid var(--blue);background:rgba(74,158,255,.2);border-radius:1px}
+
+  .search-pin{width:24px;height:24px}
+  .search-pin svg{filter:drop-shadow(0 0 12px rgba(0,229,212,.6))}
+
+  /* ---------- glass panels ---------- */
+  .glass{background:linear-gradient(180deg,rgba(15,29,51,.92),rgba(10,22,40,.82));backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);border:1px solid var(--line);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 30px 60px -30px rgba(0,0,0,.7)}
+  .hairline{border-top:1px solid var(--line)}
+  .hairline-b{border-bottom:1px solid var(--line)}
+
+  /* ---------- slider ---------- */
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;outline:none}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:linear-gradient(to right,var(--teal) 0%,var(--teal) var(--pct,25%),var(--line) var(--pct,25%),var(--line) 100%);border:none}
+  input[type=range]::-moz-range-track{height:2px;background:var(--line);border:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-7px;background:var(--bg-1);border:2px solid var(--teal);border-radius:50%;box-shadow:0 0 14px rgba(0,229,212,.6),0 0 0 4px rgba(0,229,212,.1);cursor:grab;transition:transform .15s}
+  input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1.15)}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--bg-1);border:2px solid var(--teal);border-radius:50%;cursor:grab}
+
+  /* ---------- misc ---------- */
+  .tick{width:1px;height:6px;background:var(--slate-1)}
+  .label-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--slate-2)}
+  .big-num{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:700;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .grid-bg{background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:40px 40px;background-position:-1px -1px;opacity:.25}
+
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .rise{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+  .d1{animation-delay:.05s}.d2{animation-delay:.12s}.d3{animation-delay:.2s}.d4{animation-delay:.28s}
+
+  .ticker{display:flex;gap:24px;align-items:center;white-space:nowrap}
+  .ticker .sep{width:4px;height:4px;border-radius:50%;background:var(--slate-1)}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:blink 1.8s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .bar{height:4px;background:var(--line);position:relative;overflow:hidden}
+  .bar > span{position:absolute;inset:0;transform-origin:left;background:linear-gradient(90deg,var(--teal-dim),var(--teal))}
+
+  /* ---------- buttons ---------- */
+  .btn{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:12px 18px;border:1px solid var(--line);background:rgba(10,22,40,.5);color:var(--white);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:10px}
+  .btn:hover{border-color:var(--teal);color:var(--teal);background:rgba(0,229,212,.06)}
+  .btn.primary{background:var(--teal);color:#001615;border-color:var(--teal)}
+  .btn.primary:hover{background:#1af0df;box-shadow:0 0 30px rgba(0,229,212,.4)}
+
+  /* ---------- LOGO (clickable) ---------- */
+  .logo-link{text-decoration:none;color:var(--white)}
+  .logo-link:hover .dot{transform:scale(1.4);transition:transform .2s}
+
+  /* ---------- TOP BAR ---------- */
+  header.topbar{position:fixed;top:0;left:0;right:0;z-index:30}
+  .topbar-row{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:64px}
+
+  /* ---------- SEARCH (floating top centre) ---------- */
+  .search-wrap{position:fixed;top:84px;left:50%;transform:translateX(-50%);z-index:35;width:560px;max-width:calc(100vw - 48px)}
+  .search-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(10,22,40,.92);backdrop-filter:blur(14px);border:1px solid var(--line);transition:border-color .2s,box-shadow .2s}
+  .search-bar:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,229,212,.1),0 12px 30px -10px rgba(0,0,0,.6)}
+  .search-bar svg{flex:none;color:var(--slate-2)}
+  .search-bar input{flex:1;background:transparent;border:none;outline:none;color:var(--white);font-family:'Archivo',sans-serif;font-size:14px;letter-spacing:-.005em}
+  .search-bar input::placeholder{color:var(--slate-1)}
+  .search-bar .kbd{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--slate-2);border:1px solid var(--line);padding:3px 6px;letter-spacing:.05em}
+
+  .search-results{margin-top:6px;background:rgba(10,22,40,.96);backdrop-filter:blur(14px);border:1px solid var(--line);max-height:340px;overflow-y:auto;display:none}
+  .search-results.open{display:block}
+  .sr-group{padding:8px 0}
+  .sr-group + .sr-group{border-top:1px solid var(--line)}
+  .sr-label{padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate-1)}
+  .sr-item{display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;transition:background .12s}
+  .sr-item:hover,.sr-item.active{background:rgba(0,229,212,.07)}
+  .sr-item .ic{width:18px;height:18px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;flex:none}
+  .sr-item .ic.hot{background:rgba(255,200,92,.15);color:var(--amber-bright)}
+  .sr-item .ic.site{background:rgba(0,229,212,.12);color:var(--teal)}
+  .sr-item .name{font-size:13px}
+  .sr-item .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--slate-2);margin-left:auto}
+
+  /* filter chips */
+  .filter-row{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+  .chip{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:7px 12px;background:rgba(10,22,40,.85);backdrop-filter:blur(14px);border:1px solid var(--line);color:var(--slate-2);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .15s}
+  .chip:hover{color:var(--white);border-color:var(--slate-1)}
+  .chip.active{background:rgba(0,229,212,.12);border-color:var(--teal);color:var(--teal)}
+  .chip .x{opacity:.6;font-size:10px}
+  .chip-slider{padding:7px 14px;display:flex;align-items:center;gap:10px;min-width:240px}
+  .chip-slider .label{flex:none}
+  .chip-slider input[type=range]{height:14px;flex:1}
+  .chip-slider input[type=range]::-webkit-slider-runnable-track{height:1px}
+  .chip-slider input[type=range]::-webkit-slider-thumb{width:12px;height:12px;margin-top:-5.5px;border-width:1.5px;box-shadow:0 0 8px rgba(0,229,212,.6)}
+  .chip-slider .val{font-size:10px;color:var(--white);min-width:54px;text-align:right}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{position:fixed;left:24px;top:160px;width:300px;max-height:calc(100vh - 184px);z-index:20;display:flex;flex-direction:column}
+
+  .legend-item{display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--slate-2)}
+  .swatch{width:10px;height:10px;border-radius:50%}
+
+  /* ---------- HELP BUTTON ---------- */
+  .help-btn{position:fixed;right:24px;bottom:24px;z-index:40;width:44px;height:44px;border-radius:50%;background:var(--teal);color:#001615;border:none;cursor:pointer;font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(0,229,212,.18),0 12px 30px -8px rgba(0,229,212,.5);transition:transform .2s}
+  .help-btn:hover{transform:scale(1.08)}
+
+  /* ---------- MODAL ---------- */
+  .modal-wrap{position:fixed;inset:0;z-index:1000;pointer-events:none}
+  .modal{position:absolute;right:24px;top:84px;bottom:24px;width:440px;pointer-events:auto;display:flex;flex-direction:column;transform:translateX(110%);opacity:0;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s}
+  .modal.open{transform:none;opacity:1}
+  .modal-body{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .modal-body::-webkit-scrollbar{width:4px}
+  .modal-body::-webkit-scrollbar-thumb{background:var(--line)}
+
+  /* details toggle */
+  .details-toggle{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate-2);background:none;border:none;cursor:pointer;padding:0;margin-top:14px;display:inline-flex;align-items:center;gap:8px;transition:color .2s}
+  .details-toggle:hover{color:var(--teal)}
+  .details-toggle .chev{transition:transform .25s;display:inline-block}
+  .details-toggle.open .chev{transform:rotate(180deg)}
+  .details-rows{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s ease;overflow:hidden}
+  .details-rows.open{grid-template-rows:1fr}
+  .details-rows-inner{min-height:0;overflow:hidden}
+
+  /* ---------- HELP OVERLAY / FORM OVERLAY ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(5,11,24,.78);backdrop-filter:blur(8px);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .overlay-panel{background:var(--bg-1);border:1px solid var(--line);max-width:560px;width:calc(100% - 48px);max-height:calc(100vh - 48px);overflow-y:auto;position:relative;transform:translateY(20px);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  .overlay.open .overlay-panel{transform:none}
+  .overlay-close{position:absolute;top:16px;right:16px;width:32px;height:32px;background:transparent;border:1px solid var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--slate-2);transition:all .2s}
+  .overlay-close:hover{border-color:var(--teal);color:var(--teal)}
+
+  /* form */
+  .field{margin-bottom:16px}
+  .field label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--slate-2);margin-bottom:8px}
+  .field input,.field select,.field textarea{width:100%;background:var(--bg-2);border:1px solid var(--line);color:var(--white);font-family:'Archivo',sans-serif;font-size:14px;padding:12px 14px;outline:none;transition:border-color .15s}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal)}
+  .field textarea{resize:vertical;min-height:80px}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  @media (max-width:980px){
+    .sidebar{display:none}
+    .modal{left:12px;right:12px;top:160px;bottom:12px;width:auto}
+    .search-wrap{width:calc(100vw - 24px)}
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div class="grid-bg fixed inset-0 pointer-events-none" style="position:fixed;inset:0;z-index:10;pointer-events:none"></div>
+
+<!-- TOP BAR -->
+<header class="topbar glass hairline-b">
+  <div class="topbar-row">
+    <div style="display:flex;align-items:center;gap:24px">
+      <a href="index.html" class="logo-link display" style="font-size:24px;font-weight:800;letter-spacing:-.04em;line-height:1">magnec<span class="dot" style="color:var(--teal);display:inline-block">.</span></a>
+      <div class="label-eyebrow" style="display:flex;align-items:center;gap:10px">
+        <span class="tick"></span>
+        <span>Bristol · Temple Quarter</span>
+      </div>
+    </div>
+
+    <div class="ticker mono" style="font-size:11px;color:var(--slate-2);display:none" id="topbar-ticker">
+      <span style="display:flex;align-items:center;gap:8px"><span class="live-dot"></span><span style="color:var(--teal)">FYMA LIVE</span></span>
+      <span class="sep"></span>
+      <span>SITES <span style="color:var(--white)" id="t-sites">15</span></span>
+      <span class="sep"></span>
+      <span>SHOWING <span style="color:var(--white)" id="t-show">15</span></span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn primary" id="fullscreen-btn"><span>FULL SCREEN</span></button>
+    </div>
+  </div>
+</header>
+
+<!-- SEARCH BAR + FILTERS -->
+<div class="search-wrap">
+  <div class="search-bar">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    <input id="search-input" type="text" placeholder="Search Bristol streets, postcodes or sites…" autocomplete="off"/>
+    <span class="kbd">↵</span>
+  </div>
+  <div class="search-results" id="search-results"></div>
+
+  <div class="filter-row">
+    <button class="chip" data-filter="hot">High Opportunity</button>
+    <button class="chip" data-filter="near-tq1">Near TQ1</button>
+    <div class="chip chip-slider">
+      <span class="label">Max £/mo</span>
+      <input id="price-slider" type="range" min="500" max="6000" step="100" value="6000"/>
+      <span class="val mono" id="price-val">Any</span>
+    </div>
+    <button class="chip" id="clear-filters" style="border-style:dashed">Clear</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="glass rise d1" style="padding:18px">
+    <div class="label-eyebrow" style="margin-bottom:10px">Bristol · Live Snapshot</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <div class="big-num" style="font-size:24px" id="kpi-sites">15</div>
+        <div class="mono" style="font-size:10px;color:var(--slate-2);margin-top:2px">SITES SHOWING</div>
+      </div>
+      <div>
+        <div class="big-num" style="font-size:24px;color:var(--amber-bright)" id="kpi-hot">6</div>
+        <div class="mono" style="font-size:10px;color:var(--slate-2);margin-top:2px">HIGH OPPORTUNITY</div>
+      </div>
+    </div>
+    <div class="bar"><span id="kpi-bar" style="transform:scaleX(.4)"></span></div>
+  </div>
+
+  <div class="glass rise d2" style="padding:18px;margin-top:12px">
+    <div class="label-eyebrow" style="margin-bottom:12px">Map Legend</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="legend-item"><span class="swatch" style="background:var(--amber-bright);box-shadow:0 0 12px var(--amber-bright)"></span>High Opportunity site</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--teal);box-shadow:0 0 10px var(--teal)"></span>Established site</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--blue)"></span>Your selection</div>
+    </div>
+  </div>
+
+  <div class="glass rise d3" style="padding:18px;margin-top:12px">
+    <div class="label-eyebrow" style="margin-bottom:8px">Tip</div>
+    <p class="mono" style="font-size:11px;line-height:1.6;color:var(--slate-2)">Click any site on the map, or search for a street to explore. Drag the lease slider to see how cost changes month-by-month.</p>
+  </div>
+</aside>
+
+<!-- HELP BUTTON -->
+<button class="help-btn" id="help-btn" title="How to use this">?</button>
+
+<!-- ============ MODAL ============ -->
+<div class="modal-wrap">
+  <div id="modal" class="modal glass">
+    <!-- header -->
+    <div style="padding:20px;display:flex;align-items:flex-start;justify-content:space-between" class="hairline-b">
+      <div style="min-width:0">
+        <div class="label-eyebrow" id="m-code" style="margin-bottom:6px">SITE · 00</div>
+        <div class="display" id="m-name" style="font-size:22px;font-weight:700;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Portwall Lane</div>
+        <div class="mono" id="m-coords" style="font-size:10px;color:var(--slate-2);margin-top:4px">51.4515° N · 2.5885° W</div>
+      </div>
+      <button id="m-close" style="width:30px;height:30px;border:1px solid var(--line);background:transparent;color:var(--slate-2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.4"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- FOOT TRAFFIC FIRST (biggest, since it's the #1 thing) -->
+      <div style="padding:22px 20px" class="hairline-b">
+        <div class="label-eyebrow" style="margin-bottom:10px">Daily Footfall</div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div class="big-num" id="m-footfall" style="font-size:52px;line-height:1;color:var(--teal)">1,420</div>
+            <div class="mono" style="font-size:10px;color:var(--slate-2);margin-top:6px">PEOPLE WALKING BY · LIVE FROM FYMA</div>
+          </div>
+          <div style="text-align:right">
+            <div class="mono" style="font-size:11px" id="m-footfall-trend">↑ 12% vs last week</div>
+            <div class="mono" style="font-size:9px;color:var(--teal);margin-top:4px;display:flex;align-items:center;gap:6px;justify-content:flex-end"><span class="live-dot"></span>FYMA UPLIFT 2.5×</div>
+          </div>
+        </div>
+        <!-- mini sparkline -->
+        <svg id="m-spark" viewBox="0 0 380 36" style="width:100%;height:36px"></svg>
+      </div>
+
+      <!-- proximity -->
+      <div style="padding:18px 20px" class="hairline-b">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="label-eyebrow" style="margin-bottom:6px">Proximity</div>
+            <div class="big-num" id="m-dist" style="font-size:24px">124<span style="color:var(--slate-2);font-size:14px;margin-left:4px">m</span></div>
+          </div>
+          <div style="text-align:right">
+            <div class="mono" style="font-size:11px" id="m-walk">2 min walk</div>
+            <div class="mono" style="font-size:10px;color:var(--teal);margin-top:4px" id="m-status">◆ INSIDE ACTIVATION ZONE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- site quick stats -->
+      <div style="padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:16px" class="hairline-b">
+        <div>
+          <div class="label-eyebrow" style="margin-bottom:6px">Activity Level</div>
+          <div class="big-num" id="m-vib" style="font-size:22px">3.2 <span style="color:var(--slate-2);font-size:13px">/10</span></div>
+        </div>
+        <div>
+          <div class="label-eyebrow" style="margin-bottom:6px">Unit Size</div>
+          <div class="big-num" style="font-size:22px">850 <span style="color:var(--slate-2);font-size:13px">sq ft</span></div>
+        </div>
+      </div>
+
+      <!-- lease slider -->
+      <div style="padding:20px" class="hairline-b">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+          <div class="label-eyebrow">Lease Length</div>
+          <div class="mono" style="font-size:11px;color:var(--slate-2)">1 — 12 MONTHS</div>
+        </div>
+
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px">
+          <div class="big-num" id="m-months" style="font-size:48px;line-height:1;color:var(--teal)">3</div>
+          <div class="mono" id="m-months-label" style="font-size:12px;color:var(--slate-2);margin-bottom:4px">MONTHS</div>
+        </div>
+
+        <input id="m-slider" type="range" min="1" max="12" step="1" value="3" />
+        <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--slate-1);padding:0 2px;margin-top:2px">
+          <span>1</span><span>3</span><span>6</span><span>9</span><span>12</span>
+        </div>
+      </div>
+
+      <!-- COST: simplified into 3 lines, with toggle -->
+      <div style="padding:20px" class="hairline-b">
+        <div class="label-eyebrow" style="margin-bottom:14px">Cost Forecast</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px" class="mono" id="m-cost-summary">
+          <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--slate-2)">Rent</span><span id="cs-rent">£5,950</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--slate-2)">Taxes &amp; Fees</span><span id="cs-fees">£2,983</span></div>
+        </div>
+
+        <button class="details-toggle" id="details-btn">
+          <span>Show Details</span>
+          <span class="chev">▾</span>
+        </button>
+
+        <div class="details-rows" id="details-rows">
+          <div class="details-rows-inner">
+            <div style="padding-top:12px;display:flex;flex-direction:column;gap:8px" class="mono">
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--slate-2)"><span>· Business rates</span><span id="c-rates">£2,308</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--slate-2)"><span>· BID levy</span><span id="c-bid">£69</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--slate-2)"><span>· Service charge</span><span id="c-svc">£595</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--slate-2)"><span>· End of lease repair fund</span><span id="c-dil">£11</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hairline" style="margin-top:16px;padding-top:16px;display:flex;align-items:flex-end;justify-content:space-between">
+          <div>
+            <div class="label-eyebrow" style="margin-bottom:4px">Total Monthly Cost</div>
+            <div class="mono" style="font-size:10px;color:var(--slate-2)" id="c-rate">£38.30 /sqft per year</div>
+          </div>
+          <div class="big-num" id="c-total" style="font-size:28px">£8,933</div>
+        </div>
+      </div>
+
+      <!-- ROI / Estimated Profit -->
+      <div style="padding:20px;background:linear-gradient(180deg,rgba(0,229,212,.04),transparent)" class="hairline-b">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="label-eyebrow">Estimated Profit · ROI</div>
+          <div class="mono" style="font-size:9px;color:var(--teal);display:flex;align-items:center;gap:6px"><span class="live-dot"></span>FYMA UPLIFT 2.5×</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px" class="mono">
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--slate-2)">Visitors during pop-up</span><span id="r-eventfoot">3,550</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--slate-2)">Estimated buyers (25%)</span><span id="r-conv">888</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--slate-2)">Gross revenue per event</span><span id="r-gross">£10,650</span></div>
+        </div>
+
+        <div class="hairline" style="margin-top:16px;padding-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div class="label-eyebrow" style="margin-bottom:6px">Estimated Profit</div>
+            <div class="big-num" id="r-net" style="font-size:24px;color:var(--teal)">£12,480</div>
+          </div>
+          <div>
+            <div class="label-eyebrow" style="margin-bottom:6px">ROI</div>
+            <div class="big-num" id="r-roi" style="font-size:24px">1.40×</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- chart (kept as-is) -->
+      <div style="padding:20px" class="hairline-b">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+          <div class="label-eyebrow">Cost vs Profit Curve</div>
+          <div class="mono" style="font-size:9px;color:var(--slate-2)">1 → 12 MO</div>
+        </div>
+        <svg id="m-chart" viewBox="0 0 380 110" style="width:100%"></svg>
+      </div>
+
+    </div>
+
+    <!-- footer -->
+    <div style="padding:14px;display:flex;gap:8px" class="hairline">
+      <button class="btn" style="flex:1;justify-content:center" id="export-btn">EXPORT</button>
+      <button class="btn primary" style="flex:1.4;justify-content:center" id="findout-btn">FIND OUT MORE →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ EMPTY STATE ============ -->
+<div id="empty-hint" style="position:fixed;left:50%;top:55%;transform:translate(-50%,-50%);z-index:20;text-align:center;pointer-events:none">
+  <div class="glass" style="padding:18px 26px;display:inline-block">
+    <div class="label-eyebrow" style="color:var(--teal);margin-bottom:4px">◆ TAP THE MAP TO BEGIN</div>
+    <div class="mono" style="font-size:12px;color:var(--slate-2)">Click any site or anywhere in Bristol to explore</div>
+  </div>
+</div>
+
+<!-- ============ HELP OVERLAY ============ -->
+<div class="overlay" id="help-overlay">
+  <div class="overlay-panel">
+    <button class="overlay-close" id="help-close"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5"/></svg></button>
+    <div style="padding:36px">
+      <div class="label-eyebrow" style="margin-bottom:14px;color:var(--teal)">◆ How to use Magnec</div>
+      <h2 class="display" style="font-size:28px;font-weight:700;margin:0 0 24px;line-height:1.1">A quick tour for first-time visitors.</h2>
+
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;gap:16px">
+          <div class="mono" style="color:var(--teal);font-size:11px;letter-spacing:.16em;flex:none;width:30px">01</div>
+          <div>
+            <div style="font-weight:600;margin-bottom:4px">Search or click the map</div>
+            <div class="mono" style="font-size:12px;color:var(--slate-2);line-height:1.6">Use the search bar to find a Bristol street, or click any glowing dot on the map. Bright amber dots are high-opportunity sites.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div class="mono" style="color:var(--teal);font-size:11px;letter-spacing:.16em;flex:none;width:30px">02</div>
+          <div>
+            <div style="font-weight:600;margin-bottom:4px">Set your lease length</div>
+            <div class="mono" style="font-size:12px;color:var(--slate-2);line-height:1.6">Drag the slider in the side panel to choose a lease from 1 to 12 months. The total monthly cost updates live.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div class="mono" style="color:var(--teal);font-size:11px;letter-spacing:.16em;flex:none;width:30px">03</div>
+          <div>
+            <div style="font-weight:600;margin-bottom:4px">See your estimated profit</div>
+            <div class="mono" style="font-size:12px;color:var(--slate-2);line-height:1.6">Magnec uses live Fyma footfall data to estimate how much revenue and profit your pop-up could generate.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px">
+          <div class="mono" style="color:var(--teal);font-size:11px;letter-spacing:.16em;flex:none;width:30px">04</div>
+          <div>
+            <div style="font-weight:600;margin-bottom:4px">Find out more</div>
+            <div class="mono" style="font-size:12px;color:var(--slate-2);line-height:1.6">When you've found a site you like, hit "Find out more" and we'll get in touch about availability and next steps.</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn primary" id="help-got-it" style="margin-top:28px;width:100%;justify-content:center">GOT IT — START EXPLORING</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FIND OUT MORE FORM OVERLAY ============ -->
+<div class="overlay" id="form-overlay">
+  <div class="overlay-panel">
+    <button class="overlay-close" id="form-close"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5"/></svg></button>
+
+    <div id="form-stage" style="padding:32px">
+      <div class="label-eyebrow" style="margin-bottom:10px;color:var(--teal)">Reserve your interest</div>
+      <h2 class="display" style="font-size:24px;font-weight:700;margin:0 0 6px;line-height:1.1" id="form-title">Find out more about Portwall Lane</h2>
+      <p class="mono" style="font-size:12px;color:var(--slate-2);margin:0 0 24px;line-height:1.6">Tell us a little about your business and we'll be in touch within 48 hours with availability and next steps.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Your Name</label>
+          <input type="text" placeholder="Jane Smith" required />
+        </div>
+        <div class="field">
+          <label>Business Name</label>
+          <input type="text" placeholder="The Daily Loaf" required />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" placeholder="jane@dailyloaf.co.uk" required />
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" placeholder="07XXX XXXXXX" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Business Type</label>
+          <select>
+            <option>Café / Bakery</option>
+            <option>Independent Retail</option>
+            <option>Market Trader / Stall</option>
+            <option>Event / Activation</option>
+            <option>Restaurant / Food</option>
+            <option>Studio / Workshop</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Preferred Start Date</label>
+          <input type="date" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tell us about your pop-up</label>
+        <textarea placeholder="Brief description of what you'd like to do at this site…"></textarea>
+      </div>
+
+      <button class="btn primary" id="form-submit" style="width:100%;justify-content:center;padding:16px">SUBMIT REQUEST</button>
+    </div>
+
+    <!-- success -->
+    <div id="form-success" style="padding:48px 32px;text-align:center;display:none">
+      <div style="width:64px;height:64px;border-radius:50%;background:rgba(0,229,212,.12);border:1px solid var(--teal);margin:0 auto 24px;display:flex;align-items:center;justify-content:center;color:var(--teal)">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M6 14l5 5 11-12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="label-eyebrow" style="color:var(--teal);margin-bottom:10px">REQUEST RECEIVED</div>
+      <h2 class="display" style="font-size:26px;font-weight:700;margin:0 0 12px;line-height:1.1">Thanks — we'll be in touch.</h2>
+      <p class="mono" style="font-size:12px;color:var(--slate-2);line-height:1.6;max-width:360px;margin:0 auto 24px">A member of the Magnec team will email you within 48 hours with availability, viewing options, and next steps.</p>
+      <button class="btn" id="form-done" style="margin:0 auto">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function(){
+if(typeof L==='undefined'){
+  document.getElementById('map').innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#FF5C8A;font-family:IBM Plex Mono,monospace;font-size:12px">✕ Leaflet failed to load</div>';
+  return;
+}
+
+/* ==========================================================================
+   MAGNEC PLATFORM
+   ========================================================================== */
+
+const MODEL = {
+  unitSize: 850, baseRent: 28, baselineFootfall: 800, fymaUplift: 2.5,
+  conversionRate: 0.25, avgSpend: 12, revShareOrganiser: 0.15, eventOpCost: 3000,
+  haloFactor: 0.3, businessRateMultiplier: 0.499, bidLevy: 0.015,
+  serviceChargePct: 0.10, dilapsPerSqft: 0.013,
+};
+
+// 18 sites
+const SITES = [
+  { id:"PWL", name:"Portwall Lane",      lat:51.45155, lng:-2.58850, footfall:1420, vibrancy:3.2, rv:18500, hot:true },
+  { id:"RDC", name:"Redcliff Street",    lat:51.45081, lng:-2.58995, footfall:2210, vibrancy:5.1, rv:22000, hot:false },
+  { id:"RWY", name:"Redcliffe Way",      lat:51.44985, lng:-2.58980, footfall:2950, vibrancy:2.8, rv:24500, hot:true },
+  { id:"VIC", name:"Victoria Street",    lat:51.45180, lng:-2.59150, footfall:3480, vibrancy:6.2, rv:26500, hot:false },
+  { id:"TGT", name:"Temple Gate",        lat:51.44880, lng:-2.58505, footfall:4100, vibrancy:3.6, rv:27500, hot:true },
+  { id:"TWY", name:"Temple Way",         lat:51.45100, lng:-2.58305, footfall:2740, vibrancy:4.1, rv:21000, hot:false },
+  { id:"STA", name:"Station Approach",   lat:51.44895, lng:-2.58200, footfall:5280, vibrancy:4.8, rv:29000, hot:true },
+  { id:"CMR", name:"Cattle Market Road", lat:51.44650, lng:-2.58000, footfall:980,  vibrancy:2.1, rv:16500, hot:true },
+  { id:"AVS", name:"Avon Street",        lat:51.44950, lng:-2.57800, footfall:1120, vibrancy:2.4, rv:17500, hot:true },
+  { id:"STH", name:"St Thomas Street",   lat:51.45250, lng:-2.58950, footfall:1850, vibrancy:4.4, rv:20000, hot:false },
+  { id:"TQL", name:"Three Queens Lane",  lat:51.45200, lng:-2.58880, footfall:890,  vibrancy:2.6, rv:16000, hot:true },
+  { id:"GUI", name:"Guinea Street",      lat:51.44755, lng:-2.58950, footfall:1320, vibrancy:3.8, rv:18000, hot:false },
+  { id:"SOM", name:"Somerset Street",    lat:51.44650, lng:-2.58700, footfall:760,  vibrancy:2.2, rv:15500, hot:false },
+  { id:"PIP", name:"Pipe Lane",          lat:51.45050, lng:-2.59250, footfall:640,  vibrancy:1.9, rv:15000, hot:false },
+  { id:"CSL", name:"Counterslip",        lat:51.45300, lng:-2.58700, footfall:2480, vibrancy:5.6, rv:23000, hot:false },
+  { id:"THL", name:"Thomas Lane",        lat:51.45295, lng:-2.59020, footfall:1180, vibrancy:3.0, rv:17800, hot:true },
+  { id:"MED", name:"Mead Street",        lat:51.44560, lng:-2.58280, footfall:540,  vibrancy:1.7, rv:14500, hot:false },
+  { id:"BBR", name:"Bath Bridge",        lat:51.44810, lng:-2.58050, footfall:2110, vibrancy:3.4, rv:20500, hot:false },
+];
+
+// site multipliers based on RV
+SITES.forEach(s => s.mult = 0.7 + (s.rv-15000)/15000 * 0.5);
+
+const TQ1_LAT = 51.4485, TQ1_LNG = -2.5800; // approx TQEC
+
+/* ---------- calc ---------- */
+function calc(site, months){
+  const frac = months/12;
+  const annualRent   = MODEL.baseRent * MODEL.unitSize * site.mult;
+  const businessRates= site.rv * MODEL.businessRateMultiplier;
+  const bidLevy      = site.rv * MODEL.bidLevy;
+  const serviceCharge= annualRent * MODEL.serviceChargePct;
+  const dilaps       = MODEL.unitSize * MODEL.dilapsPerSqft;
+  const allInAnnual  = annualRent + businessRates + bidLevy + serviceCharge + dilaps;
+  const leaseCost    = allInAnnual * frac;
+  const fees         = (businessRates + bidLevy + serviceCharge + dilaps) * frac;
+  const rentTerm     = annualRent * frac;
+  const monthlyCost  = leaseCost / months;
+
+  const eventFootfall= site.footfall * MODEL.fymaUplift;
+  const conv         = eventFootfall * MODEL.conversionRate;
+  const grossRev     = conv * MODEL.avgSpend;
+  const eventsInTerm = Math.max(1, Math.round(months));
+  const haloRev      = grossRev * MODEL.haloFactor;
+  const grossOverTerm= (grossRev + haloRev) * eventsInTerm;
+  const netValueGen  = grossOverTerm - (MODEL.eventOpCost * eventsInTerm) - leaseCost*0.1;
+  const roi          = netValueGen / leaseCost;
+
+  return { frac, annualRent, businessRates:businessRates*frac, bidLevy:bidLevy*frac,
+    serviceCharge:serviceCharge*frac, dilaps:dilaps*frac, baseRentTerm:rentTerm,
+    fees, leaseCost, monthlyCost, allInPerSqft: allInAnnual/MODEL.unitSize,
+    eventFootfall, conv, grossRev, magnecShare: grossRev*MODEL.revShareOrganiser,
+    netValueGen, roi };
+}
+
+const fmt  = n => "£"+Math.round(n).toLocaleString('en-GB');
+const int  = n => Math.round(n).toLocaleString('en-GB');
+
+/* ==========================================================================
+   MAP
+   ========================================================================== */
+const map = L.map('map',{zoomControl:true,attributionControl:true,preferCanvas:true})
+  .setView([51.4500,-2.5860],16);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'Map: OpenStreetMap · Footfall: Fyma AI · Magnec',maxZoom:19
+}).addTo(map);
+
+const siteMarkers = {};
+SITES.forEach(s=>{
+  const icon = L.divIcon({className:'',
+    html:`<div class="node ${s.hot?'hot':''}"><div class="pulse"></div><div class="pulse p2"></div><div class="ring"></div><div class="dot"></div></div>`,
+    iconSize:[36,36],iconAnchor:[18,18]
+  });
+  const m = L.marker([s.lat,s.lng],{icon}).addTo(map);
+  m.on('click',e=>{L.DomEvent.stopPropagation(e); openSite(s,[s.lat,s.lng],true);});
+  siteMarkers[s.id] = m;
+});
+
+let clickMarker=null, searchPin=null;
+map.on('click',e=>{
+  const {lat,lng}=e.latlng;
+  let nearest=SITES[0], nd=Infinity;
+  SITES.forEach(s=>{
+    const d = map.distance([lat,lng],[s.lat,s.lng]);
+    if(d<nd){nd=d; nearest=s;}
+  });
+  if(clickMarker) map.removeLayer(clickMarker);
+  clickMarker = L.marker([lat,lng],{icon:L.divIcon({className:'',html:'<div class="click-marker"><div class="core"></div></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+  openSite(nearest,[lat,lng],false,nd);
+});
+
+/* ==========================================================================
+   FILTERS
+   ========================================================================== */
+const filters = { hot:false, nearTq1:false, maxPrice:6000 };
+
+function distMeters(a,b){return map.distance(a,b)}
+function passes(site){
+  if(filters.hot && !site.hot) return false;
+  if(filters.nearTq1){
+    const d = distMeters([site.lat,site.lng],[TQ1_LAT,TQ1_LNG]);
+    if(d>500) return false;
+  }
+  if(filters.maxPrice<6000){
+    const c = calc(site,3);
+    if(c.monthlyCost > filters.maxPrice) return false;
+  }
+  return true;
+}
+function applyFilters(){
+  let shown=0, hot=0;
+  SITES.forEach(s=>{
+    const ok = passes(s);
+    const m = siteMarkers[s.id];
+    if(ok){ if(!map.hasLayer(m)) m.addTo(map); shown++; if(s.hot) hot++; }
+    else { if(map.hasLayer(m)) map.removeLayer(m); }
+  });
+  document.getElementById('kpi-sites').textContent = shown;
+  document.getElementById('kpi-hot').textContent   = hot;
+  document.getElementById('t-sites').textContent   = SITES.length;
+  document.getElementById('t-show').textContent    = shown;
+  document.getElementById('kpi-bar').style.transform = `scaleX(${Math.max(.05,shown/SITES.length)})`;
+}
+applyFilters();
+
+document.querySelectorAll('.chip[data-filter]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const k = b.getAttribute('data-filter');
+    if(k==='hot'){ filters.hot=!filters.hot; b.classList.toggle('active',filters.hot); }
+    if(k==='near-tq1'){ filters.nearTq1=!filters.nearTq1; b.classList.toggle('active',filters.nearTq1); }
+    applyFilters();
+  });
+});
+
+const priceSlider = document.getElementById('price-slider');
+const priceVal    = document.getElementById('price-val');
+priceSlider.addEventListener('input',()=>{
+  filters.maxPrice = +priceSlider.value;
+  priceVal.textContent = filters.maxPrice>=6000 ? 'Any' : '£'+filters.maxPrice.toLocaleString();
+  applyFilters();
+});
+document.getElementById('clear-filters').addEventListener('click',()=>{
+  filters.hot=false; filters.nearTq1=false; filters.maxPrice=6000;
+  document.querySelectorAll('.chip[data-filter]').forEach(b=>b.classList.remove('active'));
+  priceSlider.value=6000; priceVal.textContent='Any';
+  applyFilters();
+});
+
+/* ==========================================================================
+   SEARCH (Magnec sites + Nominatim Bristol fallback)
+   ========================================================================== */
+const searchInput = document.getElementById('search-input');
+const searchRes   = document.getElementById('search-results');
+
+const SUGGESTED = ["Portwall Lane","Temple Meads","Redcliffe Way","Victoria Street","BS1"];
+
+function renderResults(siteHits, geoHits, suggested){
+  let html = '';
+  if(suggested){
+    html += '<div class="sr-group"><div class="sr-label">Suggested</div>';
+    SUGGESTED.forEach(s=>{
+      html += `<div class="sr-item" data-type="suggest" data-q="${s}"><div class="ic site">·</div><div class="name">${s}</div><div class="meta">SEARCH</div></div>`;
+    });
+    html += '</div>';
+  } else {
+    if(siteHits.length){
+      html += '<div class="sr-group"><div class="sr-label">Magnec sites</div>';
+      siteHits.forEach(s=>{
+        html += `<div class="sr-item" data-type="site" data-id="${s.id}"><div class="ic ${s.hot?'hot':'site'}">${s.hot?'★':'●'}</div><div class="name">${s.name}</div><div class="meta">${int(s.footfall)} /day</div></div>`;
+      });
+      html += '</div>';
+    }
+    if(geoHits && geoHits.length){
+      html += '<div class="sr-group"><div class="sr-label">Bristol locations</div>';
+      geoHits.forEach((g,i)=>{
+        html += `<div class="sr-item" data-type="geo" data-i="${i}"><div class="ic site">⌖</div><div class="name">${g.label}</div><div class="meta">MAP</div></div>`;
+      });
+      html += '</div>';
+    }
+    if(!siteHits.length && (!geoHits||!geoHits.length)){
+      html += '<div style="padding:20px;text-align:center"><div class="mono" style="font-size:11px;color:var(--slate-2)">No results — try a Bristol street name</div></div>';
+    }
+  }
+  searchRes.innerHTML = html;
+  searchRes.classList.add('open');
+
+  searchRes.querySelectorAll('.sr-item').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const type = el.getAttribute('data-type');
+      if(type==='suggest'){
+        searchInput.value = el.getAttribute('data-q');
+        runSearch();
+      } else if(type==='site'){
+        const s = SITES.find(x=>x.id===el.getAttribute('data-id'));
+        if(s){
+          map.flyTo([s.lat,s.lng],17,{duration:.9});
+          searchRes.classList.remove('open');
+          searchInput.value = s.name;
+        }
+      } else if(type==='geo'){
+        const g = lastGeo[+el.getAttribute('data-i')];
+        if(g){
+          map.flyTo([g.lat,g.lng],17,{duration:1});
+          if(searchPin) map.removeLayer(searchPin);
+          searchPin = L.marker([g.lat,g.lng],{icon:L.divIcon({className:'',html:'<div class="search-pin"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8z" fill="#00E5D4" stroke="#001615" stroke-width="1.5"/><circle cx="12" cy="10" r="3" fill="#001615"/></svg></div>',iconSize:[24,24],iconAnchor:[12,24]})}).addTo(map);
+          searchRes.classList.remove('open');
+          searchInput.value = g.label;
+        }
+      }
+    });
+  });
+}
+
+let lastGeo = [];
+let searchTimer = null;
+
+async function runSearch(){
+  const q = searchInput.value.trim();
+  if(!q){ renderResults([],[],true); return; }
+
+  const ql = q.toLowerCase();
+  const siteHits = SITES.filter(s=>s.name.toLowerCase().includes(ql)).slice(0,5);
+
+  // Nominatim — bias to Bristol via viewbox (lat/lon bbox around BS1)
+  let geoHits = [];
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q+', Bristol, UK')}&viewbox=-2.65,51.50,-2.50,51.40&bounded=1`;
+    const r = await fetch(url,{headers:{'Accept':'application/json'}});
+    if(r.ok){
+      const j = await r.json();
+      geoHits = j.map(x=>({lat:+x.lat,lng:+x.lon,label:x.display_name.split(',').slice(0,3).join(',')}));
+    }
+  }catch(e){ /* silent */ }
+  lastGeo = geoHits;
+  renderResults(siteHits,geoHits,false);
+}
+
+searchInput.addEventListener('input',()=>{
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch,260);
+});
+searchInput.addEventListener('focus',()=>{
+  if(!searchInput.value.trim()) renderResults([],[],true);
+});
+document.addEventListener('click',e=>{
+  if(!searchRes.contains(e.target) && e.target!==searchInput){
+    searchRes.classList.remove('open');
+  }
+});
+
+/* ==========================================================================
+   MODAL
+   ========================================================================== */
+const modal     = document.getElementById('modal');
+const emptyHint = document.getElementById('empty-hint');
+const slider    = document.getElementById('m-slider');
+let currentSite=null, currentDist=0;
+
+function openSite(site,point,isSiteClick,dist){
+  currentSite = site;
+  currentDist = isSiteClick?0:dist;
+
+  const idx = SITES.findIndex(s=>s.id===site.id)+1;
+  document.getElementById('m-code').textContent = `SITE · ${String(idx).padStart(2,'0')} / ${SITES.length}  ·  ${site.id}`;
+  document.getElementById('m-name').textContent = site.name;
+  document.getElementById('m-coords').textContent = `${site.lat.toFixed(4)}° N  ·  ${Math.abs(site.lng).toFixed(4)}° W`;
+  document.getElementById('m-footfall').textContent = int(site.footfall);
+  document.getElementById('m-vib').innerHTML = `${site.vibrancy.toFixed(1)} <span style="color:var(--slate-2);font-size:13px">/10</span>`;
+
+  // sparkline
+  drawSpark(site);
+
+  const dEl  = document.getElementById('m-dist');
+  const wEl  = document.getElementById('m-walk');
+  const stEl = document.getElementById('m-status');
+  if(isSiteClick){
+    dEl.innerHTML = `0<span style="color:var(--slate-2);font-size:14px;margin-left:4px">m</span>`;
+    wEl.textContent='ON-SITE';
+    stEl.textContent='◆ PRIMARY SITE';
+    stEl.style.color='var(--teal)';
+  } else {
+    const d = Math.round(currentDist);
+    dEl.innerHTML = `${d}<span style="color:var(--slate-2);font-size:14px;margin-left:4px">m</span>`;
+    wEl.textContent = `${Math.max(1,Math.round(d/80))} min walk`;
+    const inZone = d<500;
+    stEl.textContent = inZone?'◆ INSIDE ACTIVATION ZONE':'◇ OUTSIDE ACTIVATION ZONE';
+    stEl.style.color = inZone?'var(--teal)':'var(--amber-bright)';
+  }
+
+  recalc();
+  modal.classList.add('open');
+  emptyHint.style.display='none';
+}
+
+document.getElementById('m-close').addEventListener('click',()=>{
+  modal.classList.remove('open');
+  if(clickMarker){map.removeLayer(clickMarker);clickMarker=null;}
+  setTimeout(()=>{emptyHint.style.display='block'},400);
+});
+
+slider.addEventListener('input',()=>{
+  slider.style.setProperty('--pct',((slider.value-1)/11*100)+'%');
+  recalc();
+});
+slider.style.setProperty('--pct',((slider.value-1)/11*100)+'%');
+
+function recalc(){
+  if(!currentSite) return;
+  const months = +slider.value;
+  const r = calc(currentSite,months);
+
+  document.getElementById('m-months').textContent = months;
+  document.getElementById('m-months-label').textContent = months===1?'MONTH':'MONTHS';
+
+  // simplified summary
+  document.getElementById('cs-rent').textContent = fmt(r.baseRentTerm);
+  document.getElementById('cs-fees').textContent = fmt(r.fees);
+
+  // detail rows
+  document.getElementById('c-rates').textContent = fmt(r.businessRates);
+  document.getElementById('c-bid').textContent   = fmt(r.bidLevy);
+  document.getElementById('c-svc').textContent   = fmt(r.serviceCharge);
+  document.getElementById('c-dil').textContent   = fmt(r.dilaps);
+
+  document.getElementById('c-total').textContent = fmt(r.leaseCost);
+  document.getElementById('c-rate').textContent  = `£${r.allInPerSqft.toFixed(2)} /sqft per year`;
+
+  document.getElementById('r-eventfoot').textContent = int(r.eventFootfall);
+  document.getElementById('r-conv').textContent      = int(r.conv);
+  document.getElementById('r-gross').textContent     = fmt(r.grossRev);
+  document.getElementById('r-net').textContent       = fmt(r.netValueGen);
+  document.getElementById('r-roi').textContent       = (r.roi>=0?r.roi.toFixed(2):'—')+'×';
+
+  drawChart();
+}
+
+/* details toggle */
+const detailsBtn  = document.getElementById('details-btn');
+const detailsRows = document.getElementById('details-rows');
+detailsBtn.addEventListener('click',()=>{
+  const open = detailsBtn.classList.toggle('open');
+  detailsRows.classList.toggle('open',open);
+  detailsBtn.querySelector('span').textContent = open?'Hide Details':'Show Details';
+});
+
+/* footfall sparkline (7-day fake series, deterministic per site) */
+function drawSpark(site){
+  const svg = document.getElementById('m-spark');
+  const W=380,H=36,PAD=2;
+  // generate 14 points based on site
+  const seed = site.footfall;
+  const pts = [];
+  for(let i=0;i<14;i++){
+    const v = seed * (0.75 + 0.5*Math.abs(Math.sin(i*1.3 + seed/500)));
+    pts.push(v);
+  }
+  const max = Math.max(...pts), min = Math.min(...pts);
+  const x = i => PAD + i/(pts.length-1)*(W-PAD*2);
+  const y = v => H-PAD - (v-min)/(max-min+0.001) * (H-PAD*2);
+  const d = pts.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area = d + ` L${x(13).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z`;
+  svg.innerHTML = `
+    <defs><linearGradient id="sp" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#00E5D4" stop-opacity=".4"/><stop offset="100%" stop-color="#00E5D4" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#sp)"/>
+    <path d="${d}" fill="none" stroke="#00E5D4" stroke-width="1.4"/>
+    <circle cx="${x(13)}" cy="${y(pts[13])}" r="2.5" fill="#00E5D4"/>
+  `;
+}
+
+function drawChart(){
+  if(!currentSite) return;
+  const svg = document.getElementById('m-chart');
+  const W=380,H=110,PAD=8;
+  const xs=[],costs=[],values=[];
+  for(let m=1;m<=12;m++){
+    const r=calc(currentSite,m);
+    xs.push(m); costs.push(r.leaseCost); values.push(Math.max(0,r.netValueGen));
+  }
+  const maxY = Math.max(...costs,...values,1);
+  const x = m => PAD + (m-1)/11*(W-PAD*2);
+  const y = v => H-PAD - (v/maxY)*(H-PAD*2);
+  const pathFrom = arr => arr.map((v,i)=>`${i?'L':'M'}${x(xs[i]).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const areaFrom = arr => pathFrom(arr)+` L${x(12).toFixed(1)},${H-PAD} L${x(1).toFixed(1)},${H-PAD} Z`;
+  const selM = +slider.value;
+  svg.innerHTML = `
+    <defs><linearGradient id="gv" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#00E5D4" stop-opacity=".35"/><stop offset="100%" stop-color="#00E5D4" stop-opacity="0"/></linearGradient></defs>
+    <g stroke="#16263F" stroke-width=".5">
+      <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}"/>
+      <line x1="${PAD}" y1="${PAD}"   x2="${W-PAD}" y2="${PAD}" stroke-dasharray="2 4"/>
+      <line x1="${PAD}" y1="${(PAD+H-PAD)/2}" x2="${W-PAD}" y2="${(PAD+H-PAD)/2}" stroke-dasharray="2 4"/>
+    </g>
+    <path d="${areaFrom(values)}" fill="url(#gv)"/>
+    <path d="${pathFrom(values)}" fill="none" stroke="#00E5D4" stroke-width="1.6"/>
+    <path d="${pathFrom(costs)}"  fill="none" stroke="#4A9EFF" stroke-width="1.3" stroke-dasharray="3 3"/>
+    <line x1="${x(selM)}" y1="${PAD}" x2="${x(selM)}" y2="${H-PAD}" stroke="#FFB547" stroke-width="1" stroke-dasharray="1 2"/>
+    <circle cx="${x(selM)}" cy="${y(values[selM-1])}" r="3.5" fill="#0A1628" stroke="#00E5D4" stroke-width="1.5"/>
+    <circle cx="${x(selM)}" cy="${y(costs[selM-1])}"  r="3"   fill="#0A1628" stroke="#4A9EFF" stroke-width="1.5"/>
+    <g font-family="IBM Plex Mono" font-size="8" fill="#7A8BA4">
+      <text x="${W-PAD}" y="${PAD+8}" text-anchor="end">EST. PROFIT</text>
+      <text x="${W-PAD}" y="${PAD+18}" text-anchor="end" fill="#4A9EFF">LEASE COST</text>
+    </g>
+  `;
+}
+
+/* ==========================================================================
+   HELP OVERLAY
+   ========================================================================== */
+const helpOv = document.getElementById('help-overlay');
+function openHelp(){helpOv.classList.add('open')}
+function closeHelp(){helpOv.classList.remove('open')}
+document.getElementById('help-btn').onclick = openHelp;
+document.getElementById('help-close').onclick = closeHelp;
+document.getElementById('help-got-it').onclick = closeHelp;
+helpOv.addEventListener('click',e=>{if(e.target===helpOv)closeHelp()});
+
+/* show on first visit */
+try{
+  if(!localStorage.getItem('magnec-seen')){
+    setTimeout(openHelp,1200);
+    localStorage.setItem('magnec-seen','1');
+  }
+}catch(e){}
+
+/* ==========================================================================
+   FIND OUT MORE FORM
+   ========================================================================== */
+const formOv = document.getElementById('form-overlay');
+const formStage = document.getElementById('form-stage');
+const formSuccess = document.getElementById('form-success');
+
+document.getElementById('findout-btn').addEventListener('click',()=>{
+  if(currentSite){
+    document.getElementById('form-title').textContent = `Find out more about ${currentSite.name}`;
+  }
+  formStage.style.display='block';
+  formSuccess.style.display='none';
+  formOv.classList.add('open');
+});
+document.getElementById('form-close').onclick = ()=>formOv.classList.remove('open');
+document.getElementById('form-done').onclick  = ()=>formOv.classList.remove('open');
+formOv.addEventListener('click',e=>{if(e.target===formOv)formOv.classList.remove('open')});
+
+document.getElementById('form-submit').addEventListener('click',()=>{
+  formStage.style.display='none';
+  formSuccess.style.display='block';
+});
+
+/* export = pop a fake "exported" toast — keep simple */
+document.getElementById('export-btn').addEventListener('click',()=>{
+  const btn = document.getElementById('export-btn');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ EXPORTED';
+  btn.style.color = 'var(--teal)';
+  setTimeout(()=>{btn.innerHTML=orig;btn.style.color='';},1600);
+});
+
+/* full screen */
+document.getElementById('fullscreen-btn').addEventListener('click',()=>{
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen?.();
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(formOv.classList.contains('open')) formOv.classList.remove('open');
+    else if(helpOv.classList.contains('open')) closeHelp();
+    else if(modal.classList.contains('open')) document.getElementById('m-close').click();
+  }
+});
+
+/* open default site */
+setTimeout(()=>{openSite(SITES[0],[SITES[0].lat,SITES[0].lng],true)},700);
+
+}); // end window.load
+</script>
+</body>
+</html>
